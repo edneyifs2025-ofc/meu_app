@@ -10,20 +10,37 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
   bool loading = false;
   bool obscurePassword = true;
+  bool aguardandoGov = false;
 
   final emailController = TextEditingController();
   final senhaController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     emailController.dispose();
     senhaController.dispose();
     super.dispose();
   }
 
+  // 🔁 DETECTA QUANDO O APP VOLTA
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && aguardandoGov) {
+      finalizarLoginGov();
+    }
+  }
+
+  // ✅ LOGIN NORMAL
   Future<void> loginEmailSenha() async {
     final email = emailController.text.trim();
     final senha = senhaController.text.trim();
@@ -56,6 +73,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // 🌐 ABRE GOV.BR
   Future<void> loginGov() async {
     final Uri url = Uri.parse('https://sso.acesso.gov.br/login');
 
@@ -65,13 +83,33 @@ class _LoginPageState extends State<LoginPage> {
         mode: LaunchMode.externalApplication,
       );
 
-      if (!abriu) {
-        throw 'Não foi possível abrir o GOV.BR';
-      }
+      if (!abriu) throw 'Erro ao abrir';
 
-      setState(() => loading = true);
+      setState(() {
+        aguardandoGov = true;
+      });
 
-      await Future.delayed(const Duration(seconds: 3));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Faça login no GOV.BR e volte para o app'),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Erro ao acessar o GOV.BR')));
+    }
+  }
+
+  // 🔐 FINALIZA LOGIN GOV
+  Future<void> finalizarLoginGov() async {
+    setState(() {
+      loading = true;
+      aguardandoGov = false;
+    });
+
+    try {
+      await Future.delayed(const Duration(seconds: 2));
       await AuthService.login();
 
       if (!mounted) return;
@@ -83,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Erro ao acessar o GOV.BR')));
+      ).showSnackBar(const SnackBar(content: Text('Erro ao finalizar login')));
     } finally {
       if (mounted) setState(() => loading = false);
     }

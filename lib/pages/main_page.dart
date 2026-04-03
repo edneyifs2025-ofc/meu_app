@@ -16,12 +16,40 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int index = 0;
 
-  final pages = const [HomePage(), NotasPage(), FrequenciaPage(), AvisosPage()];
-  final titles = ['Início', 'Notas', 'Frequência', 'Avisos'];
+  final List<Widget> pages = const [
+    HomePage(),
+    NotasPage(),
+    FrequenciaPage(),
+    AvisosPage(),
+  ];
+
+  final List<String> titles = ['Início', 'Notas', 'Frequência', 'Avisos'];
 
   Future<void> logout() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair'),
+        content: const Text('Deseja realmente sair da conta?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
     await AuthService.logout();
+
     if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -34,21 +62,50 @@ class _MainPageState extends State<MainPage> {
       appBar: AppBar(
         title: Text(titles[index]),
         centerTitle: true,
+        elevation: 2,
         actions: [
-          IconButton(icon: const Icon(Icons.logout), onPressed: logout),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              backgroundColor: Colors.indigo,
+              child: const Icon(Icons.person, color: Colors.white),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: logout,
+          ),
         ],
       ),
-      body: pages[index],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: index,
-        selectedItemColor: Colors.indigo,
-        onTap: (i) => setState(() => index = i),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
-          BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Notas'),
-          BottomNavigationBarItem(icon: Icon(Icons.check), label: 'Freq.'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
+
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: pages[index],
+      ),
+
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: index,
+        onDestinationSelected: (i) => setState(() => index = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Início',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.school_outlined),
+            selectedIcon: Icon(Icons.school),
+            label: 'Notas',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.check_circle_outline),
+            selectedIcon: Icon(Icons.check_circle),
+            label: 'Frequência',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.notifications_none),
+            selectedIcon: Icon(Icons.notifications),
             label: 'Avisos',
           ),
         ],

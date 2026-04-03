@@ -12,14 +12,25 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  url_launcher: ^6.2.5      # Abrir GOV.BR
-  shared_preferences: ^2.2.2 # Salvar login
+
+  # 🔥 Login e navegação externa (GOV.BR)
+  url_launcher: ^6.2.5
+
+  # 💾 Salvar login do usuário
+  shared_preferences: ^2.2.2
+
+  # ✨ (OPCIONAL - mas recomendado)
+  # Ícones mais bonitos e modernos
+  flutter_svg: ^2.0.10
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
   flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.13.1 # Gerar ícone automático
+
+  # 🎨 Gerar ícone do app
+  flutter_launcher_icons: ^0.13.1
 
 flutter_icons:
   android: true
