@@ -12,8 +12,17 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool loading = false;
+  bool obscurePassword = true;
+
   final emailController = TextEditingController();
   final senhaController = TextEditingController();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    senhaController.dispose();
+    super.dispose();
+  }
 
   Future<void> loginEmailSenha() async {
     final email = emailController.text.trim();
@@ -28,126 +37,191 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => loading = true);
 
-    await Future.delayed(const Duration(seconds: 2));
-    await AuthService.login();
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+      await AuthService.login();
 
-    if (!mounted) return;
-    setState(() => loading = false);
+      if (!mounted) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainPage()),
-    );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainPage()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Erro ao fazer login')));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   Future<void> loginGov() async {
     final Uri url = Uri.parse('https://sso.acesso.gov.br/login');
 
-    await launchUrl(url, mode: LaunchMode.externalApplication);
+    try {
+      final bool abriu = await launchUrl(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
 
-    setState(() => loading = true);
-    await Future.delayed(const Duration(seconds: 3));
-    await AuthService.login();
+      if (!abriu) {
+        throw 'Não foi possível abrir o GOV.BR';
+      }
 
-    if (!mounted) return;
-    setState(() => loading = false);
+      setState(() => loading = true);
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainPage()),
-    );
+      await Future.delayed(const Duration(seconds: 3));
+      await AuthService.login();
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainPage()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Erro ao acessar o GOV.BR')));
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.indigo, Colors.blueAccent],
+            colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: Center(
           child: SingleChildScrollView(
-            child: Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              elevation: 10,
-              child: Padding(
-                padding: const EdgeInsets.all(25),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.school, size: 70, color: Colors.indigo),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Gestão Escolar',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 30),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                const Icon(Icons.school, size: 80, color: Colors.white),
+                const SizedBox(height: 10),
+                const Text(
+                  'Gestão Escolar',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 30),
 
-                    TextField(
-                      controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'E-mail',
-                        prefixIcon: Icon(Icons.email),
-                        border: OutlineInputBorder(),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 10,
+                        offset: Offset(0, 5),
                       ),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 15),
-
-                    TextField(
-                      controller: senhaController,
-                      decoration: const InputDecoration(
-                        labelText: 'Senha',
-                        prefixIcon: Icon(Icons.lock),
-                        border: OutlineInputBorder(),
-                      ),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 20),
-
-                    loading
-                        ? const CircularProgressIndicator()
-                        : ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.indigo,
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            onPressed: loginEmailSenha,
-                            child: const Text('Entrar'),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: 'E-mail',
+                          prefixIcon: const Icon(Icons.email),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-
-                    const SizedBox(height: 10),
-                    const Text('OU', style: TextStyle(fontSize: 16)),
-                    const SizedBox(height: 10),
-
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      icon: const Icon(Icons.login),
-                      label: const Text('Entrar com GOV.BR'),
-                      onPressed: loginGov,
-                    ),
-                  ],
+                      const SizedBox(height: 15),
+
+                      TextField(
+                        controller: senhaController,
+                        obscureText: obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          prefixIcon: const Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscurePassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                obscurePassword = !obscurePassword;
+                              });
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {},
+                          child: const Text('Esqueceu a senha?'),
+                        ),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      loading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF1E3A8A),
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: loginEmailSenha,
+                              child: const Text('Entrar'),
+                            ),
+
+                      const SizedBox(height: 15),
+                      const Text('ou'),
+                      const SizedBox(height: 15),
+
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.account_balance),
+                        label: const Text('Entrar com GOV.BR'),
+                        onPressed: loginGov,
+                      ),
+
+                      const SizedBox(height: 15),
+
+                      TextButton(
+                        onPressed: () {},
+                        child: const Text('Criar uma conta'),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
