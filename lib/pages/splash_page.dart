@@ -26,7 +26,7 @@ class _SplashPageState extends State<SplashPage> {
         debugPrint("Retorno do login: $uri");
 
         // Aqui você pode salvar que o usuário está logado
-        await AuthService.setLogado(true);
+        await AuthService.login();
 
         if (!mounted) return;
 
