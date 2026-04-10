@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.meu_app">
 
     <application
         android:label="Gestão Escolar App"
@@ -9,7 +10,6 @@
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -26,17 +26,17 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- 🔥 RETORNO DO LOGIN (GOV ou qualquer navegador) -->
-            <intent-filter>
+            <!-- 🔥 DEEP LINK (RETORNO DO LOGIN) -->
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
 
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
 
-                <!-- LINK PERSONALIZADO DO APP -->
                 <data
                     android:scheme="meuapp"
-                    android:host="login-callback"/>
+                    android:host="login"
+                    android:path="/" />
             </intent-filter>
 
         </activity>

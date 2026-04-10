@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uni_links/uni_links.dart';
+import 'dart:async';
+
 import '../services/auth_service.dart';
 import 'main_page.dart';
 
@@ -10,45 +13,56 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
+class _LoginPageState extends State<LoginPage> {
   bool loading = false;
   bool obscurePassword = true;
-  bool aguardandoGov = false;
 
-  final emailController = TextEditingController();
+  final matriculaController = TextEditingController();
   final senhaController = TextEditingController();
+
+  StreamSubscription? _sub;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+
+    // 🔥 ESCUTA O RETORNO DO GOV.BR (DEEP LINK)
+    _sub = uriLinkStream.listen((Uri? uri) async {
+      if (uri != null && uri.host == 'login') {
+        final code = uri.queryParameters['code'];
+
+        print("Código recebido: $code");
+
+        // Aqui você pode validar com API depois
+        await AuthService.login();
+
+        if (!mounted) return;
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainPage()),
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    emailController.dispose();
+    _sub?.cancel();
+    matriculaController.dispose();
     senhaController.dispose();
     super.dispose();
   }
 
-  // 🔁 DETECTA QUANDO O APP VOLTA
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && aguardandoGov) {
-      finalizarLoginGov();
-    }
-  }
-
-  // ✅ LOGIN NORMAL
-  Future<void> loginEmailSenha() async {
-    final email = emailController.text.trim();
+  // ✅ LOGIN COM MATRÍCULA
+  Future<void> loginMatriculaSenha() async {
+    final matricula = matriculaController.text.trim();
     final senha = senhaController.text.trim();
 
-    if (email.isEmpty || senha.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Preencha e-mail e senha')));
+    if (matricula.isEmpty || senha.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha matrícula e senha')),
+      );
       return;
     }
 
@@ -56,6 +70,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
     try {
       await Future.delayed(const Duration(seconds: 2));
+
       await AuthService.login();
 
       if (!mounted) return;
@@ -65,17 +80,23 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
         MaterialPageRoute(builder: (_) => const MainPage()),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Erro ao fazer login')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erro ao fazer login')),
+      );
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  // 🌐 ABRE GOV.BR
+  // 🌐 LOGIN GOV.BR CORRETO
   Future<void> loginGov() async {
-    final Uri url = Uri.parse('https://sso.acesso.gov.br/login');
+    final Uri url = Uri.parse(
+      'https://sso.acesso.gov.br/authorize'
+      '?client_id=SEU_CLIENT_ID'
+      '&response_type=code'
+      '&redirect_uri=meuapp://login'
+      '&scope=openid+profile+email',
+    );
 
     try {
       final bool abriu = await launchUrl(
@@ -84,46 +105,10 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
       );
 
       if (!abriu) throw 'Erro ao abrir';
-
-      setState(() {
-        aguardandoGov = true;
-      });
-
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Faça login no GOV.BR e volte para o app'),
-        ),
+        const SnackBar(content: Text('Erro ao acessar o GOV.BR')),
       );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Erro ao acessar o GOV.BR')));
-    }
-  }
-
-  // 🔐 FINALIZA LOGIN GOV
-  Future<void> finalizarLoginGov() async {
-    setState(() {
-      loading = true;
-      aguardandoGov = false;
-    });
-
-    try {
-      await Future.delayed(const Duration(seconds: 2));
-      await AuthService.login();
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainPage()),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Erro ao finalizar login')));
-    } finally {
-      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -154,7 +139,6 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(height: 30),
-
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -170,19 +154,22 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                   ),
                   child: Column(
                     children: [
+                      // 🔢 MATRÍCULA
                       TextField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
+                        controller: matriculaController,
+                        keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: 'E-mail',
-                          prefixIcon: const Icon(Icons.email),
+                          labelText: 'Matrícula',
+                          prefixIcon: const Icon(Icons.badge),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 15),
 
+                      // 🔒 SENHA
                       TextField(
                         controller: senhaController,
                         obscureText: obscurePassword,
@@ -219,6 +206,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
 
                       const SizedBox(height: 10),
 
+                      // 🔐 LOGIN NORMAL
                       loading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
@@ -229,7 +217,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              onPressed: loginEmailSenha,
+                              onPressed: loginMatriculaSenha,
                               child: const Text('Entrar'),
                             ),
 
@@ -237,6 +225,7 @@ class _LoginPageState extends State<LoginPage> with WidgetsBindingObserver {
                       const Text('ou'),
                       const SizedBox(height: 15),
 
+                      // 🌐 GOV.BR
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
