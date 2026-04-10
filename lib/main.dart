@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
-import 'pages/splash_page.dart'; // Importa a SplashPage
+import 'package:hive_flutter/hive_flutter.dart';
+import 'pages/splash_page.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    // Inicializa o Hive
+    await Hive.initFlutter();
+
+    // Abre o banco de dados
+    await Hive.openBox('usuario');
+  } catch (e) {
+    // Evita travar o app se der erro no Hive
+    debugPrint('Erro ao iniciar Hive: $e');
+  }
+
   runApp(const MyApp());
 }
 
@@ -17,7 +31,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.indigo,
         scaffoldBackgroundColor: const Color(0xFFF5F7FB),
       ),
-      home: const SplashPage(), // Tela inicial
+      home: const SplashPage(),
     );
   }
 }

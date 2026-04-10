@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.11.4 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -13,14 +13,17 @@ dependencies:
 
   cupertino_icons: ^1.0.8
 
+  # 🟢 Banco de dados local (Hive)
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
   # 🔥 Login e navegação externa (GOV.BR)
   url_launcher: ^6.2.5
 
-  # 💾 Salvar login do usuário
+  # 💾 Salvar login simples
   shared_preferences: ^2.2.2
 
-  # ✨ (OPCIONAL - mas recomendado)
-  # Ícones mais bonitos e modernos
+  # ✨ Ícones SVG
   flutter_svg: ^2.0.10
 
 dev_dependencies:
@@ -30,9 +33,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
   # 🎨 Gerar ícone do app
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.0
 
-flutter_icons:
+# 🔥 Configuração dos ícones
+flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon.png"
