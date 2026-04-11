@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
 import 'dart:async';
 
 import '../services/auth_service.dart';
@@ -20,30 +20,45 @@ class _LoginPageState extends State<LoginPage> {
   final matriculaController = TextEditingController();
   final senhaController = TextEditingController();
 
-  StreamSubscription? _sub;
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _sub;
+
+  bool _jaNavegou = false;
 
   @override
   void initState() {
     super.initState();
+    _initDeepLinkListener();
+  }
 
-    // 🔥 ESCUTA O RETORNO DO GOV.BR (DEEP LINK)
-    _sub = uriLinkStream.listen((Uri? uri) async {
-      if (uri != null && uri.host == 'login') {
-        final code = uri.queryParameters['code'];
+  // 🔥 ESCUTA O RETORNO DO GOV.BR
+  void _initDeepLinkListener() {
+    _sub = _appLinks.uriLinkStream.listen(
+      (Uri uri) async {
+        if (!_jaNavegou && uri.host == 'login') {
+          _jaNavegou = true;
 
-        print("Código recebido: $code");
+          final code = uri.queryParameters['code'];
+          debugPrint("Código recebido: $code");
 
-        // Aqui você pode validar com API depois
-        await AuthService.login();
+          try {
+            await AuthService.login();
 
-        if (!mounted) return;
+            if (!mounted) return;
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainPage()),
-        );
-      }
-    });
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const MainPage()),
+            );
+          } catch (e) {
+            _showError('Erro ao processar login GOV.BR');
+          }
+        }
+      },
+      onError: (err) {
+        debugPrint('Erro no deep link: $err');
+      },
+    );
   }
 
   @override
@@ -54,15 +69,20 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // ✅ LOGIN COM MATRÍCULA
+  // 🔴 ERRO
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
+  // ✅ LOGIN NORMAL
   Future<void> loginMatriculaSenha() async {
     final matricula = matriculaController.text.trim();
     final senha = senhaController.text.trim();
 
     if (matricula.isEmpty || senha.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha matrícula e senha')),
-      );
+      _showError('Preencha matrícula e senha');
       return;
     }
 
@@ -80,15 +100,13 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => const MainPage()),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao fazer login')),
-      );
+      _showError('Erro ao fazer login');
     } finally {
       if (mounted) setState(() => loading = false);
     }
   }
 
-  // 🌐 LOGIN GOV.BR CORRETO
+  // 🌐 LOGIN GOV.BR
   Future<void> loginGov() async {
     final Uri url = Uri.parse(
       'https://sso.acesso.gov.br/authorize'
@@ -104,11 +122,9 @@ class _LoginPageState extends State<LoginPage> {
         mode: LaunchMode.externalApplication,
       );
 
-      if (!abriu) throw 'Erro ao abrir';
+      if (!abriu) throw Exception('Não abriu URL');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao acessar o GOV.BR')),
-      );
+      _showError('Erro ao acessar o GOV.BR');
     }
   }
 
@@ -154,7 +170,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   child: Column(
                     children: [
-                      // 🔢 MATRÍCULA
                       TextField(
                         controller: matriculaController,
                         keyboardType: TextInputType.number,
@@ -166,10 +181,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 15),
-
-                      // 🔒 SENHA
                       TextField(
                         controller: senhaController,
                         obscureText: obscurePassword,
@@ -193,9 +205,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -203,10 +213,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: const Text('Esqueceu a senha?'),
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
-                      // 🔐 LOGIN NORMAL
                       loading
                           ? const CircularProgressIndicator()
                           : ElevatedButton(
@@ -220,12 +227,9 @@ class _LoginPageState extends State<LoginPage> {
                               onPressed: loginMatriculaSenha,
                               child: const Text('Entrar'),
                             ),
-
                       const SizedBox(height: 15),
                       const Text('ou'),
                       const SizedBox(height: 15),
-
-                      // 🌐 GOV.BR
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
@@ -238,9 +242,7 @@ class _LoginPageState extends State<LoginPage> {
                         label: const Text('Entrar com GOV.BR'),
                         onPressed: loginGov,
                       ),
-
                       const SizedBox(height: 15),
-
                       TextButton(
                         onPressed: () {},
                         child: const Text('Criar uma conta'),

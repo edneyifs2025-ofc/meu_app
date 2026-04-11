@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
+import 'dart:async';
+
 import '../services/auth_service.dart';
 import 'login_page.dart';
 import 'main_page.dart';
@@ -12,39 +14,56 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  final AppLinks _appLinks = AppLinks();
+  StreamSubscription<Uri>? _sub;
+
+  bool _jaNavegou = false;
+
   @override
   void initState() {
     super.initState();
-    initDeepLink();
-    verificarLogin();
+    _initDeepLink();
+    _verificarLogin();
   }
 
-  // 🔗 Escuta o retorno do GOV.BR
-  void initDeepLink() {
-    uriLinkStream.listen((Uri? uri) async {
-      if (uri != null) {
-        debugPrint("Retorno do login: $uri");
+  // 🔗 ESCUTA O RETORNO DO GOV.BR
+  void _initDeepLink() {
+    _sub = _appLinks.uriLinkStream.listen(
+      (Uri uri) async {
+        if (!_jaNavegou && uri.host == 'login') {
+          _jaNavegou = true;
 
-        // Aqui você pode salvar que o usuário está logado
-        await AuthService.login();
+          debugPrint("Retorno do login: $uri");
 
-        if (!mounted) return;
+          try {
+            await AuthService.login();
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainPage()),
-        );
-      }
-    });
+            if (!mounted) return;
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const MainPage()),
+            );
+          } catch (e) {
+            _irParaLogin();
+          }
+        }
+      },
+      onError: (err) {
+        debugPrint("Erro no deep link: $err");
+      },
+    );
   }
 
-  // 🔐 Verifica se já está logado
-  void verificarLogin() async {
+  // 🔐 VERIFICA LOGIN
+  Future<void> _verificarLogin() async {
     bool logado = await AuthService.isLogado();
 
     await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
+    if (!mounted || _jaNavegou) return;
+
+    _jaNavegou = true;
 
     Navigator.pushReplacement(
       context,
@@ -52,6 +71,21 @@ class _SplashPageState extends State<SplashPage> {
         builder: (_) => logado ? const MainPage() : const LoginPage(),
       ),
     );
+  }
+
+  void _irParaLogin() {
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel(); // 🔥 MUITO IMPORTANTE
+    super.dispose();
   }
 
   @override
